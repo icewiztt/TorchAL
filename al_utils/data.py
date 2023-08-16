@@ -105,6 +105,7 @@ class Data:
                     ops = [
                         transforms.Resize(256, antialias=True),
                         transforms.RandomResizedCrop((224,224), antialias=True),
+                        transforms.Grayscale(num_output_channels=3),
                     ]
                     
                 else:
@@ -155,8 +156,6 @@ class Data:
                     )
 
             ops.append(transforms.ToTensor())
-            if self.dataset == "RSNA":
-                ops.append(transforms.Lambda(lambda x: x.expand(3,*x.shape[1:])),)
 
             if self.eval_mode:
                 if self.dataset == "IMAGENET":
@@ -168,8 +167,8 @@ class Data:
                 elif self.dataset == "RSNA":
                     ops = [
                         transforms.Resize((224,224), antialias=True),
+                        transforms.Grayscale(num_output_channels=3),
                         transforms.ToTensor(),             
-                        transforms.Lambda(lambda x: x.expand(3,*x.shape[1:])),
                     ]
                 else:
                     ops = [transforms.ToTensor()]

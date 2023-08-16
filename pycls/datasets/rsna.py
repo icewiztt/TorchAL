@@ -17,7 +17,7 @@ logger = lu.get_logger(__name__)
 
 class RSNA(torch.utils.data.Dataset):
     def __init__(self, data_path, csv_path, transforms = None):
-        csv = pd.read_csv(csv_path)
+        csv = pd.read_csv(csv_path).drop_duplicates("patientId")
         self.fnames = [os.path.join(data_path, patient_id + ".jpg")
                            for patient_id in csv['patientId']]   # get the full path to images
         self.labels = csv['Target'].values
