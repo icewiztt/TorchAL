@@ -296,7 +296,7 @@ def run_auto_ml(cfg, args):
     # hparams_importances = optuna.importance.get_param_importances(study)
 
     complete_trials = [
-        t for t in study.trials if t.state == optuna.structs.TrialState.COMPLETE
+        t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
     ]
     print("Study statistics: ")
     print("  Number of finished trials: ", len(study.trials))

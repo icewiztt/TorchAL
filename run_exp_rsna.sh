@@ -19,8 +19,8 @@ lSet_partition=1
 base_seed=1
 num_GPU=1
 al_iterations=4 #7 #4
-num_aml_trials=3 #50
-budget_size=5000 #2500
+num_aml_trials=1 #50
+budget_size=100 #2500
 
 dataset=RSNA
 init_partition=10
@@ -35,7 +35,7 @@ log_iter=40
 
 #Data arguments
 train_dir=~/TorchAL/data/$dataset/train-$dataset/
-test_dir=~/TorchAL/data/$dataset/test-$dataset/
+test_dir=~/TorchAL/data/$dataset/train-$dataset/
 lSetPath=~/TorchAL/data_indexes/$dataset/partition_$lSet_partition/lSet_$dataset.npy
 uSetPath=~/TorchAL/data_indexes/$dataset/partition_$lSet_partition/uSet_$dataset.npy
 valSetPath=~/TorchAL/data_indexes/$dataset/partition_$lSet_partition/valSet_$dataset.npy
