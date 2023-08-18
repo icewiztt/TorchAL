@@ -18,7 +18,7 @@ sampling_fn=dbal
 lSet_partition=1
 base_seed=1
 num_GPU=1
-al_iterations=4 #7 #4
+al_iterations=2 #7 #4
 num_aml_trials=1 #50
 budget_size=100 #2500
 

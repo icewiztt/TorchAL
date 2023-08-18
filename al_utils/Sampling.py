@@ -167,7 +167,7 @@ class CoreSetMIPSampling:
         print("Distance matrix computed in {} seconds".format(end - start))
         greedy_indices = []
         for i in range(self.cfg.ACTIVE_LEARNING.BUDGET_SIZE):
-            if i is not 0 and i % 500 == 0:
+            if i != 0 and i % 500 == 0:
                 print("Sampled {} samples".format(i))
             lab_temp_indexes = np.array(np.append(lSetIds, greedy_indices), dtype=int)
             # unlab_temp_indexes = np.array(list(set(uSetIds)-set(greedy_indices)))

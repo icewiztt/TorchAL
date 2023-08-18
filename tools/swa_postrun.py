@@ -111,15 +111,15 @@ def swa_train(cfg, args, optimizer, model, lSetLoader, bn_lSetLoader, valSetLoad
 
     # Check val accuracy
     print("Evaluating validation accuracy")
-    swa_model.eval()
+    model.eval()
 
-    accuracy = get_validation_accuracy(valSetLoader, swa_model, current_id)
+    accuracy = get_validation_accuracy(valSetLoader, model, current_id)
 
     print("Validation Accuracy with SWA model: {}".format(accuracy))
 
     print("Saving SWA model")
     print("len(cfg.NUM_GPUS): {}".format(cfg.NUM_GPUS))
-    sd = swa_model.module.state_dict() if cfg.NUM_GPUS > 1 else swa_model.state_dict()
+    sd = model.module.state_dict() if cfg.NUM_GPUS > 1 else model.state_dict()
     # when model is on single gpu then model state_dict contains keyword module
     # So we will simply remove <module> from dictionary.
     isModuleStrPresent = False
