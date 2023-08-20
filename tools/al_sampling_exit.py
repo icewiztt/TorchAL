@@ -234,14 +234,14 @@ def active_sampling(cfg) -> None:
         activelearning = ActiveLearning(dataObj=dataObj, cfg=cfg)
 
     with torch.no_grad():
-        if cfg.ACTIVE_LEARNING.SAMPLING_FN.lower() in ["bemps"]:
-            activeSet, uSet = activelearning.sample_from_uSet(
-                clf_model=model, lSet=lSet, uSet=uSet, trainDataset=evalDataset
-            )
-        else:
-            activeSet, uSet = activelearning.sample_from_uSet(
-                clf_model=model, lSet=lSet, uSet=uSet, trainDataset=noAugDataset
-            )
+        # if cfg.ACTIVE_LEARNING.SAMPLING_FN.lower() in ["bemps"]:
+        #     activeSet, uSet = activelearning.sample_from_uSet(
+        #         clf_model=model, lSet=lSet, uSet=uSet, trainDataset=evalDataset
+        #     )
+        # else:
+        activeSet, uSet = activelearning.sample_from_uSet(
+            clf_model=model, lSet=lSet, uSet=uSet, trainDataset=noAugDataset
+        )
     print("========BEFORE==========")
     print("len(uSEt): ", len(uSet))
     print("len(lSEt): ", len(lSet))
