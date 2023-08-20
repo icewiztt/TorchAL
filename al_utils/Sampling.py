@@ -694,7 +694,6 @@ class Sampling:
             ::-1
         ]  # argsort helps to return the indices of u_scores such that their corresponding values are sorted.
         activeSet = sorted_idx[:budgetSize]
-
         activeSet = uSet[activeSet]
         remainSet = uSet[sorted_idx[budgetSize:]]
 
@@ -1351,6 +1350,125 @@ class Sampling:
         activeSet = uSet[activeSet]
         remainSet = uSet[remainSet]
         return activeSet, remainSet
+    
+    def bemps(self, budgetSize, uSet, clf_model, dataset):
+        clf_model.cuda(self.cuda_id)
+        criterion = torch.nn.CrossEntropyLoss()
+
+        # Set Batchnorm in eval mode whereas dropout in train mode
+        clf_model.train()
+        for m in clf_model.modules():
+            # print("True")
+            if isinstance(m, torch.nn.BatchNorm2d):
+                m.eval()
+
+        # clf_model = torch.nn.DataParallel(clf_model, device_ids = [i for i in range(self.cfg.NUM_GPUS)])
+        assert (
+            self.cfg.ACTIVE_LEARNING.DROPOUT_ITERATIONS != 0
+        ), "Expected dropout iterations > 0."
+
+        if self.cfg.TRAIN.DATASET == "IMAGENET":
+            uSetLoader = imagenet_loader.construct_loader_no_aug(
+                cfg=self.cfg,
+                indices=uSet,
+                isDistributed=False,
+                isShuffle=False,
+                isVaalSampling=False,
+            )
+        else:
+            uSetLoader = self.dataObj.getSequentialDataLoader(
+                indexes=uSet,
+                batch_size=int(self.cfg.TRAIN.BATCH_SIZE / self.cfg.NUM_GPUS),
+                data=dataset,
+            )
+
+        for batch in tqdm(uSetLoader, desc="Evaluating"):
+            clf_model.eval()
+            batch = tuple(t.cuda(self.cuda_id) for t in batch)
+
+            with torch.no_grad():
+                inputs = batch[0]
+                outputs = clf_model(inputs)
+                logits = outputs
+                tmp_eval_loss = criterion(outputs, batch[1])
+
+            if preds is None:
+                preds = logits.detach().cpu().numpy()
+                out_label_ids = batch[1].detach().cpu().numpy()
+            else:
+                preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
+                out_label_ids = np.append(out_label_ids, batch[1].detach().cpu().numpy(), axis=0)
+        logits = preds
+        
+        scores_save_path = self.cfg.OUT_DIR
+        os.makedirs(scores_save_path, exist_ok=True)
+        with open(os.path.join(scores_save_path, "actualScores.txt"), "w") as fpw:
+            for temp_idx, temp_rank in zip(uSet, logits):
+                fpw.write(f"{temp_idx}\t{temp_rank:.6f}\n")
+        fpw.close()
+        
+        winner_index = bemps_coremse_batch(logits, self.cfg.TRAIN.BATCH_SIZE, 0.00025, 1.0)
+        activeSet = winner_index[:budgetSize]
+        activeSet = uSet[activeSet]
+        remainSet = uSet[winner_index[budgetSize:]]
+        
+        self.dump_modified_cfg()
+        
+        return activeSet, remainSet
+        # u_scores = []
+        # n_uPts = len(uSet)
+        # ptsProcessed = 0
+
+        # entropy_loss = EntropyLoss()
+
+        # print("len usetLoader: {}".format(len(uSetLoader)))
+        # temp_i = 0
+
+        # for k, (x_u, _) in enumerate(tqdm(uSetLoader, desc="uSet Feed Forward")):
+        #     temp_i += 1
+
+        #     x_u = x_u.type(torch.cuda.FloatTensor)
+        #     z_op = np.zeros((x_u.shape[0], self.cfg.MODEL.NUM_CLASSES), dtype=float)
+        #     for i in range(self.cfg.ACTIVE_LEARNING.DROPOUT_ITERATIONS):
+        #         x_u = x_u.cuda(self.cuda_id)
+        #         temp_op = clf_model(x_u)
+        #         # Till here z_op represents logits of p(y|x).
+        #         # So to get probabilities
+        #         temp_op = torch.nn.functional.softmax(temp_op, dim=1)
+        #         z_op = np.add(z_op, temp_op.cpu().numpy())
+
+        #     z_op /= self.cfg.ACTIVE_LEARNING.DROPOUT_ITERATIONS
+
+        #     z_op = torch.from_numpy(z_op).cuda(self.cuda_id)
+        #     entropy_z_op = entropy_loss(z_op, applySoftMax=False)
+
+        #     # Now entropy_z_op = Sum over all classes{ -p(y=c|x) log p(y=c|x)}
+        #     u_scores.append(entropy_z_op.cpu().numpy())
+        #     ptsProcessed += x_u.shape[0]
+
+        # u_scores = np.concatenate(u_scores, axis=0)
+
+        # # To manually inspect if sampling works correctly
+        # scores_save_path = self.cfg.OUT_DIR
+        # os.makedirs(scores_save_path, exist_ok=True)  # just to be safe
+        # with open(os.path.join(scores_save_path, "actualScores.txt"), "w") as fpw:
+        #     for temp_idx, temp_rank in zip(uSet, u_scores):
+        #         fpw.write(f"{temp_idx}\t{temp_rank:.6f}\n")
+
+        # fpw.close()
+
+        # sorted_idx = np.argsort(u_scores)[
+        #     ::-1
+        # ]  # argsort helps to return the indices of u_scores such that their corresponding values are sorted.
+        # activeSet = sorted_idx[:budgetSize]
+
+        # activeSet = uSet[activeSet]
+        # remainSet = uSet[sorted_idx[budgetSize:]]
+
+        # # Write cfg file
+        # self.dump_modified_cfg()
+
+        # return activeSet, remainSet
 
     # def core_gcn(self, budgetSize:int, lSet:np.ndarray, uSet:np.ndarray, model, dataset)->Tuple[np.ndarray, np.ndarray]:
     #     """Implements the coreGCN AL method.
@@ -1641,3 +1759,88 @@ class Sampling:
     #     self.dump_modified_cfg()
 
     #     return activeSet, remainSet
+
+import random
+from sklearn.cluster import KMeans
+from scipy.spatial.distance import cdist
+from torch.nn.functional import normalize
+
+def kmeans(rr, k):
+
+    kmeans = KMeans(n_clusters=k).fit(rr)
+    centers = kmeans.cluster_centers_
+    # find the nearest point to centers
+    centroids = cdist(centers, rr).argmin(axis=1)
+    centroids_set = np.unique(centroids)
+    m = k - len(centroids_set)
+    if m > 0:
+        pool = np.delete(np.arange(len(rr)), centroids_set)
+        p = np.random.choice(len(pool), m)
+        centroids = np.concatenate((centroids_set, pool[p]), axis = None)
+    return centroids
+
+
+def clustering(rr_X_Xp, probs_B_K_C, T, batch_size):
+    rr_X = torch.sum(rr_X_Xp, dim=-1)
+    rr_topk_X = torch.topk(rr_X, round(probs_B_K_C.shape[0] * T))
+    rr_topk_X_indices = rr_topk_X.indices.cpu().detach().numpy()
+    rr_X_Xp = rr_X_Xp[rr_topk_X_indices]
+
+    rr_X_Xp = normalize(rr_X_Xp)
+    # rr_X_Xp = convert_embedding_by_tsne(rr_X_Xp)
+
+    rr = kmeans(rr_X_Xp, batch_size)
+    rr = [rr_topk_X_indices[x] for x in rr]
+
+    return rr
+
+def random_generator_for_x_prime(x_dim, size):
+    sample_indices = random.sample(range(0, x_dim), round(x_dim * size))
+    return sorted(sample_indices)
+
+def bemps_coremse_batch(probs_B_K_C, batch_size, X, T):
+
+    ## Pr(y|theta,x)
+    pr_YThetaX_X_E_Y = probs_B_K_C
+    pr_ThetaL = 1 / pr_YThetaX_X_E_Y.shape[1]
+
+    ## Generate random number of x'
+    xp_indices = random_generator_for_x_prime(pr_YThetaX_X_E_Y.shape[0], X)
+    pr_YhThetaXp_Xp_E_Yh = pr_YThetaX_X_E_Y[xp_indices, :, :]
+
+    ## Transpose dimension of Pr(y|theta,x), and calculate pr(theta|L,(x,y))
+    pr_YThetaX_X_E_Y = pr_ThetaL * pr_YThetaX_X_E_Y
+    pr_YThetaX_X_Y_E = torch.transpose(pr_YThetaX_X_E_Y, 1, 2)  ## transpose by dimension E and Y
+
+    sum_pr_YThetaX_X_Y_1 = torch.sum(pr_YThetaX_X_Y_E, dim=-1).unsqueeze(dim=-1)
+    pr_ThetaLXY_X_Y_E = pr_YThetaX_X_Y_E / sum_pr_YThetaX_X_Y_1
+
+    ## Calculate pr(y_hat)
+    pr_ThetaLXY_X_1_Y_E = pr_ThetaLXY_X_Y_E.unsqueeze(dim=1)
+    print(pr_ThetaLXY_X_1_Y_E.size(),pr_YhThetaXp_Xp_E_Yh.size())
+    pr_Yhat_X_Xp_Y_Yh = torch.matmul(pr_ThetaLXY_X_1_Y_E, pr_YhThetaXp_Xp_E_Yh)
+
+    ## Calculate core MSE by using unsqueeze into same dimension for pr(y_hat) and pr(y_hat|theta,x)
+    pr_YhThetaXp_1_1_Xp_E_Yh = pr_YhThetaXp_Xp_E_Yh.unsqueeze(dim = 0).unsqueeze(dim = 0)
+    pr_YhThetaXp_X_Y_Xp_E_Yh = pr_YhThetaXp_1_1_Xp_E_Yh.repeat(pr_Yhat_X_Xp_Y_Yh.shape[0], pr_Yhat_X_Xp_Y_Yh.shape[2], 1, 1, 1)
+
+    pr_Yhat_1_X_Xp_Y_Yh = pr_Yhat_X_Xp_Y_Yh.unsqueeze(dim = 0)
+    pr_Yhat_E_X_Xp_Y_Yh = pr_Yhat_1_X_Xp_Y_Yh.repeat(pr_YhThetaXp_Xp_E_Yh.shape[1],1,1,1,1)
+    pr_Yhat_X_Y_Xp_E_Yh = pr_Yhat_E_X_Xp_Y_Yh.transpose(0,3).transpose(0,1)
+
+    core_mse = (pr_YhThetaXp_X_Y_Xp_E_Yh - pr_Yhat_X_Y_Xp_E_Yh).pow(2)
+    core_mse_X_Y_Xp = torch.sum(core_mse.sum(dim=-1), dim=-1)
+    core_mse_X_Xp_Y = torch.transpose(core_mse_X_Y_Xp, 1, 2)
+    core_mse_Xp_X_Y = torch.transpose(core_mse_X_Xp_Y, 0, 1)
+
+    ## Calculate RR
+    pr_YLX_X_Y = torch.sum(pr_YThetaX_X_Y_E, dim=-1)
+
+    rr_Xp_X_Y = pr_YLX_X_Y.unsqueeze(0) * core_mse_Xp_X_Y
+
+    rr_Xp_X = torch.sum(rr_Xp_X_Y, dim=-1)
+    rr_X_Xp = torch.transpose(rr_Xp_X, 0, 1)
+
+    rr = clustering(rr_X_Xp, probs_B_K_C, T, batch_size)
+
+    return rr
