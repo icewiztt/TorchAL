@@ -1376,37 +1376,45 @@ class Sampling:
                 isVaalSampling=False,
             )
         else:
-            uSetLoader = self.dataObj.getSequentialDataLoader(
-                indexes=uSet,
+            # uSetLoader = self.dataObj.getSequentialDataLoader(
+            #     indexes=uSet,
+            #     batch_size=int(self.cfg.TRAIN.BATCH_SIZE / self.cfg.NUM_GPUS),
+            #     data=dataset,
+            # )
+            uSetLoader = torch.utils.data.DataLoader(
+                dataset,
                 batch_size=int(self.cfg.TRAIN.BATCH_SIZE / self.cfg.NUM_GPUS),
-                data=dataset,
             )
+        preds = None
 
-        for batch in tqdm(uSetLoader, desc="Evaluating"):
+        for k, (x_u, _) in enumerate(tqdm(uSetLoader, desc="uSet Feed Forward")):
             clf_model.eval()
-            batch = tuple(t.cuda(self.cuda_id) for t in batch)
+            # batch = tuple(t.cuda(self.cuda_id) for t in batch)
 
             with torch.no_grad():
-                inputs = batch[0]
+                inputs = x_u.cuda(self.cuda_id)
                 outputs = clf_model(inputs)
                 logits = outputs
-                tmp_eval_loss = criterion(outputs, batch[1])
+                # tmp_eval_loss = criterion(outputs, batch[1])
 
             if preds is None:
                 preds = logits.detach().cpu().numpy()
-                out_label_ids = batch[1].detach().cpu().numpy()
+                # out_label_ids = batch[1].detach().cpu().numpy()
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-                out_label_ids = np.append(out_label_ids, batch[1].detach().cpu().numpy(), axis=0)
-        logits = preds
+                # out_label_ids = np.append(out_label_ids, batch[1].detach().cpu().numpy(), axis=0)
+        logits = torch.Tensor(preds)
+        logits = torch.stack([logits,logits], dim=0)
+        logits = torch.softmax(logits, dim=-1).transpose(0,1)
+        print(logits.size())
         
         scores_save_path = self.cfg.OUT_DIR
         os.makedirs(scores_save_path, exist_ok=True)
-        with open(os.path.join(scores_save_path, "actualScores.txt"), "w") as fpw:
-            for temp_idx, temp_rank in zip(uSet, logits):
-                fpw.write(f"{temp_idx}\t{temp_rank:.6f}\n")
-        fpw.close()
-        
+        # with open(os.path.join(scores_save_path, "actualScores.txt"), "w") as fpw:
+        #     for temp_idx, temp_rank in zip(uSet, logits):
+        #         fpw.write(f"{temp_idx}\t{temp_rank:.6f}\n")
+        # fpw.close()
+        print("LOGITS", logits)
         winner_index = bemps_coremse_batch(logits, self.cfg.TRAIN.BATCH_SIZE, 0.00025, 1.0)
         activeSet = winner_index[:budgetSize]
         activeSet = uSet[activeSet]

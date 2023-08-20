@@ -138,6 +138,14 @@ class ActiveLearning:
                 clf_model=clf_model,
                 dataset=trainDataset,
             )
+            
+        elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN.lower() == "bemps":
+            activeSet, uSet = self.sampler.bemps(
+                budgetSize=self.cfg.ACTIVE_LEARNING.BUDGET_SIZE,
+                uSet=uSet,
+                clf_model=clf_model,
+                dataset=trainDataset,
+            )
 
         elif self.cfg.ACTIVE_LEARNING.SAMPLING_FN.lower() == "bald":
             activeSet, uSet = self.sampler.bald(
