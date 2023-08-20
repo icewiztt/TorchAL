@@ -1376,15 +1376,15 @@ class Sampling:
                 isVaalSampling=False,
             )
         else:
-            # uSetLoader = self.dataObj.getSequentialDataLoader(
-            #     indexes=uSet,
-            #     batch_size=int(self.cfg.TRAIN.BATCH_SIZE / self.cfg.NUM_GPUS),
-            #     data=dataset,
-            # )
-            uSetLoader = torch.utils.data.DataLoader(
-                dataset,
+            uSetLoader = self.dataObj.getSequentialDataLoader(
+                indexes=uSet,
                 batch_size=int(self.cfg.TRAIN.BATCH_SIZE / self.cfg.NUM_GPUS),
+                data=dataset,
             )
+            # uSetLoader = torch.utils.data.DataLoader(
+            #     dataset,
+            #     batch_size=int(self.cfg.TRAIN.BATCH_SIZE / self.cfg.NUM_GPUS),
+            # )
         preds = None
 
         for k, (x_u, _) in enumerate(tqdm(uSetLoader, desc="uSet Feed Forward")):
@@ -1419,7 +1419,7 @@ class Sampling:
         activeSet = winner_index[:budgetSize]
         activeSet = uSet[activeSet]
         remainSet = uSet[winner_index[budgetSize:]]
-        
+        print("LOGGING")
         self.dump_modified_cfg()
         
         return activeSet, remainSet
