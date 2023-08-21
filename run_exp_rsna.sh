@@ -14,13 +14,13 @@ cd ~/TorchAL
 
 # script params
 port=5035
-sampling_fn=dbal
+sampling_fn=bemps
 lSet_partition=1
 base_seed=1
 num_GPU=1
-al_iterations=2 #7 #4
-num_aml_trials=2 #50
-budget_size=2000 #2500
+al_iterations=4 #7 #4
+num_aml_trials=5 #50
+budget_size=2668 #2500
 
 dataset=RSNA
 init_partition=10
@@ -61,7 +61,7 @@ model_depth=16 #26
 
 date # So we know when we started
 
-export CUDA_VISIBLE_DEVICES=0
+# export CUDA_VISIBLE_DEVICES=0
 
 python3 tools/main_aml.py --n_GPU $num_GPU \
 --port $port --sampling_fn $sampling_fn --lSet_partition $lSet_partition \
@@ -80,6 +80,6 @@ python3 tools/main_aml.py --n_GPU $num_GPU \
 --cfg configs/$dataset/$model_style/$model_type/R-18_1gpu_unreg.yaml \
 --vaal_z_dim 32 --vaal_vae_bs 64 --vaal_epochs 15 \
 --vaal_vae_lr 5e-4 --vaal_disc_lr 5e-4 --vaal_beta 1.0 --vaal_adv_param 1.0 \
---rand_aug --swa_mode --swa_freq $swa_freq --swa_lr $swa_lr --swa_epochs $swa_epochs --swa_iter 0 \
+# --rand_aug --swa_mode --swa_freq $swa_freq --swa_lr $swa_lr --swa_epochs $swa_epochs --swa_iter 0 \
 
 date # and when we finished

@@ -194,6 +194,9 @@ def active_sampling(cfg) -> None:
         noAugDataset, _ = dataObj.getDataset(
             save_dir=cfg.TRAIN_DIR, isTrain=True, isDownload=True
         )
+        evalDataset, _ = dataObj.getDataset(
+            save_dir=cfg.TRAIN_DIR, isTrain=False, isDownload=True
+        )
 
         lSet, uSet, valSet = dataObj.loadPartitions(
             lSetPath=cfg.ACTIVE_LEARNING.LSET_PATH,
@@ -209,6 +212,9 @@ def active_sampling(cfg) -> None:
         dataObj.eval_mode = True  # To load the data w/o any aug
         noAugDataset, _ = dataObj.getDataset(
             save_dir=cfg.TRAIN_DIR, isTrain=True, isDownload=True
+        )
+        evalDataset, _ = dataObj.getDataset(
+            save_dir=cfg.TRAIN_DIR, isTrain=False, isDownload=True
         )
 
         lSet = np.load(cfg.ACTIVE_LEARNING.LSET_PATH, allow_pickle=True)
@@ -228,6 +234,11 @@ def active_sampling(cfg) -> None:
         activelearning = ActiveLearning(dataObj=dataObj, cfg=cfg)
 
     with torch.no_grad():
+        # if cfg.ACTIVE_LEARNING.SAMPLING_FN.lower() in ["bemps"]:
+        #     activeSet, uSet = activelearning.sample_from_uSet(
+        #         clf_model=model, lSet=lSet, uSet=uSet, trainDataset=evalDataset
+        #     )
+        # else:
         activeSet, uSet = activelearning.sample_from_uSet(
             clf_model=model, lSet=lSet, uSet=uSet, trainDataset=noAugDataset
         )
@@ -369,4 +380,5 @@ if len(ensemble_args):
     print("=== Performing Ensemble based Active Learning ===")
     ensemble_active_learning(cfg, ensemble_args)
 else:
+    print("=== Performing Active Learning ===")
     active_sampling(cfg)

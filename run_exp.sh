@@ -5,7 +5,7 @@ export NCCL_DEBUG=INFO
 export PYTHONFAULTHANDLER=1
 
 # Go to the folder you want to run your programs in
-cd ~/TorchAL
+cd /home/ubuntu/bao.dhg/22dat.dh/vishc/TorchAL
 
 # # # # # # #Possible sampling functions
 # # # # # # ## random, uncertainty, uncertainty_uniform_discretize, dbal \
@@ -14,7 +14,7 @@ cd ~/TorchAL
 
 # script params
 port=5035
-sampling_fn=dbal
+sampling_fn=bemps
 lSet_partition=1
 base_seed=1
 num_GPU=1
@@ -26,7 +26,7 @@ dataset=CIFAR10
 init_partition=10
 step_partition=10
 clf_epochs=5 #150
-num_classes=10
+num_classes=2
 swa_lr=5e-4
 swa_freq=50
 swa_epochs=5 #50
@@ -34,14 +34,14 @@ swa_epochs=5 #50
 log_iter=40
 
 #Data arguments
-train_dir=~/TorchAL/data/$dataset/train-$dataset/
-test_dir=~/TorchAL/data/$dataset/test-$dataset/
-lSetPath=~/TorchAL/data_indexes/$dataset/partition_$lSet_partition/lSet_$dataset.npy
-uSetPath=~/TorchAL/data_indexes/$dataset/partition_$lSet_partition/uSet_$dataset.npy
-valSetPath=~/TorchAL/data_indexes/$dataset/partition_$lSet_partition/valSet_$dataset.npy
+train_dir=/home/ubuntu/bao.dhg/22dat.dh/vishc/TorchAL/data_indexes/$dataset/train-$dataset/
+test_dir=/home/ubuntu/bao.dhg/22dat.dh/vishc/TorchAL/data_indexes/$dataset/test-$dataset/
+lSetPath=/home/ubuntu/bao.dhg/22dat.dh/vishc/TorchAL/data_indexes/$dataset/partition_$lSet_partition/lSet_$dataset.npy
+uSetPath=/home/ubuntu/bao.dhg/22dat.dh/vishc/TorchAL/data_indexes/$dataset/partition_$lSet_partition/uSet_$dataset.npy
+valSetPath=/home/ubuntu/bao.dhg/22dat.dh/vishc/TorchAL/data_indexes/$dataset/partition_$lSet_partition/valSet_$dataset.npy
 
 #for lSet 1
-out_dir=~/TorchAL/temp_results 
+out_dir=/home/ubuntu/bao.dhg/22dat.dh/vishc/TorchAL/temp_results 
 
 # for other lSet Exps
 # out_dir=/raid/shadab/prateek/cvpr_code/results_lSetPartitions
@@ -61,7 +61,7 @@ model_depth=16 #26
 
 date # So we know when we started
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 
 python3 tools/main_aml.py --n_GPU $num_GPU \
 --port $port --sampling_fn $sampling_fn --lSet_partition $lSet_partition \

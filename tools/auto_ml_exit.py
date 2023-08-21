@@ -346,4 +346,5 @@ with open(tempArgsFile, "rb") as f:  # Python 3: open(..., 'rb')
 
 # check if auto-ml experiments are already there
 if not auto_ml_experiment_exists(cfg, args):
+    print("RUN AUTO ML")
     run_auto_ml(cfg, args)
