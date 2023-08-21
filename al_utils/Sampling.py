@@ -7,6 +7,7 @@ from al_utils import query_models
 from .data import Data
 import gc
 import os
+import copy
 import math
 import sys
 from copy import deepcopy
@@ -619,6 +620,7 @@ class Sampling:
         In bayesian view, predictions are computed with the help of dropouts and
         Monte Carlo approximation
         """
+        print("USET", len(uSet))
         clf_model.cuda(self.cuda_id)
 
         # Set Batchnorm in eval mode whereas dropout in train mode
@@ -680,6 +682,7 @@ class Sampling:
             ptsProcessed += x_u.shape[0]
 
         u_scores = np.concatenate(u_scores, axis=0)
+        print("USCORES", u_scores.shape)
 
         # To manually inspect if sampling works correctly
         scores_save_path = self.cfg.OUT_DIR
@@ -693,13 +696,15 @@ class Sampling:
         sorted_idx = np.argsort(u_scores)[
             ::-1
         ]  # argsort helps to return the indices of u_scores such that their corresponding values are sorted.
+        print("IDX",sorted_idx.shape)
         activeSet = sorted_idx[:budgetSize]
+        print("ACTIVE SET", activeSet)
         activeSet = uSet[activeSet]
         remainSet = uSet[sorted_idx[budgetSize:]]
 
         # Write cfg file
         self.dump_modified_cfg()
-
+        print("ARSET", len(activeSet), len(remainSet))
         return activeSet, remainSet
 
     def ensemble_var_R(self, budgetSize, uSet, clf_models, dataset):
@@ -1352,8 +1357,13 @@ class Sampling:
         return activeSet, remainSet
     
     def bemps(self, budgetSize, uSet, clf_model, dataset):
+        print("USET", len(uSet))
+        # "USCORES (30000, IDX (30000,)"
         clf_model.cuda(self.cuda_id)
-        criterion = torch.nn.CrossEntropyLoss()
+        clone_model = copy.deepcopy(clf_model)
+        state_dict_path = os.path.dirname(self.cfg.ACTIVE_LEARNING.MODEL_LOAD_DIR)
+        state_dict_path = os.path.join(state_dict_path, os.listdir(state_dict_path)[1])
+        clone_model.load_state_dict(torch.load(state_dict_path)["model_state"])
 
         # Set Batchnorm in eval mode whereas dropout in train mode
         clf_model.train()
@@ -1381,45 +1391,47 @@ class Sampling:
                 batch_size=int(self.cfg.TRAIN.BATCH_SIZE / self.cfg.NUM_GPUS),
                 data=dataset,
             )
-            # uSetLoader = torch.utils.data.DataLoader(
-            #     dataset,
-            #     batch_size=int(self.cfg.TRAIN.BATCH_SIZE / self.cfg.NUM_GPUS),
-            # )
         preds = None
-
         for k, (x_u, _) in enumerate(tqdm(uSetLoader, desc="uSet Feed Forward")):
             clf_model.eval()
-            # batch = tuple(t.cuda(self.cuda_id) for t in batch)
-
+            clone_model.eval()
             with torch.no_grad():
                 inputs = x_u.cuda(self.cuda_id)
                 outputs = clf_model(inputs)
+                clone_outputs = clone_model(inputs)
                 logits = outputs
-                # tmp_eval_loss = criterion(outputs, batch[1])
+                clone_logits = clone_outputs
 
             if preds is None:
                 preds = logits.detach().cpu().numpy()
-                # out_label_ids = batch[1].detach().cpu().numpy()
+                clone_preds = clone_logits.detach().cpu().numpy()
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-                # out_label_ids = np.append(out_label_ids, batch[1].detach().cpu().numpy(), axis=0)
+                clone_preds = np.append(clone_preds, logits.detach().cpu().numpy(), axis=0)
         logits = torch.Tensor(preds)
-        logits = torch.stack([logits,logits], dim=0)
+        clone_logits = torch.Tensor(clone_preds)
+        logits = torch.stack([logits, clone_logits], dim=0)
         logits = torch.softmax(logits, dim=-1).transpose(0,1)
-        print(logits.size())
         
-        scores_save_path = self.cfg.OUT_DIR
-        os.makedirs(scores_save_path, exist_ok=True)
-        # with open(os.path.join(scores_save_path, "actualScores.txt"), "w") as fpw:
-        #     for temp_idx, temp_rank in zip(uSet, logits):
-        #         fpw.write(f"{temp_idx}\t{temp_rank:.6f}\n")
-        # fpw.close()
-        print("LOGITS", logits)
-        winner_index = bemps_coremse_batch(logits, self.cfg.TRAIN.BATCH_SIZE, 0.00025, 1.0)
-        activeSet = winner_index[:budgetSize]
+
+        print("LOGITS", logits.size())
+        # winner_index = bemps_coremse(logits, budgetSize, 0.00025, 1.0)
+        winner_index = bemps_coremse(logits, 0.00025).numpy()
+        print("WINNER", winner_index.shape)
+        # activeSet, remainSet = [], []
+        # for i, idx in enumerate(uSet):
+        #     if i in winner_index:
+        #         activeSet.append(idx)
+        #     else:
+        #         remainSet.append(idx)
+        
+        sorted_idx = np.argsort(winner_index)[
+            ::-1
+        ]  # argsort helps to return the indices of u_scores such that their corresponding values are sorted.
+        activeSet = sorted_idx[:budgetSize]
+
         activeSet = uSet[activeSet]
-        remainSet = uSet[winner_index[budgetSize:]]
-        print("LOGGING")
+        remainSet = uSet[sorted_idx[budgetSize:]]
         self.dump_modified_cfg()
         
         return activeSet, remainSet
@@ -1806,6 +1818,44 @@ def random_generator_for_x_prime(x_dim, size):
     sample_indices = random.sample(range(0, x_dim), round(x_dim * size))
     return sorted(sample_indices)
 
+def bemps_coremse(probs_B_K_C, X):
+
+    ## Pr(y|theta,x)
+    pr_YThetaX_X_E_Y = probs_B_K_C
+    pr_ThetaL = 1 / pr_YThetaX_X_E_Y.shape[1]
+
+    ## Generate random number of x'
+    xp_indices = random_generator_for_x_prime(pr_YThetaX_X_E_Y.shape[0], X)
+    pr_YhThetaXp_Xp_E_Yh = pr_YThetaX_X_E_Y[xp_indices, :, :]
+
+    ## Transpose dimension of Pr(y|theta,x), and calculate pr(theta|L,(x,y))
+    pr_YThetaX_X_E_Y = pr_ThetaL * pr_YThetaX_X_E_Y
+    pr_YThetaX_X_Y_E = torch.transpose(pr_YThetaX_X_E_Y, 1, 2)  ## transpose by dimension E and Y
+
+    sum_pr_YThetaX_X_Y_1 = torch.sum(pr_YThetaX_X_Y_E, dim=-1).unsqueeze(dim=-1)
+    pr_ThetaLXY_X_Y_E = pr_YThetaX_X_Y_E / sum_pr_YThetaX_X_Y_1
+
+    ## Calculate pr(y_hat)
+    pr_ThetaLXY_X_1_Y_E = pr_ThetaLXY_X_Y_E.unsqueeze(dim=1)
+    pr_Yhat_X_Xp_Y_Yh = torch.matmul(pr_ThetaLXY_X_1_Y_E, pr_YhThetaXp_Xp_E_Yh)
+
+    ## Calculate core MSE by using unsqueeze into same dimension for pr(y_hat) and pr(y_hat|theta,x)
+    pr_YhThetaXp_1_1_Xp_E_Yh = pr_YhThetaXp_Xp_E_Yh.unsqueeze(dim = 0).unsqueeze(dim = 0)
+    pr_YhThetaXp_X_Y_Xp_E_Yh = pr_YhThetaXp_1_1_Xp_E_Yh.repeat(pr_Yhat_X_Xp_Y_Yh.shape[0], pr_Yhat_X_Xp_Y_Yh.shape[2], 1, 1, 1)
+
+    pr_Yhat_1_X_Xp_Y_Yh = pr_Yhat_X_Xp_Y_Yh.unsqueeze(dim = 0)
+    pr_Yhat_E_X_Xp_Y_Yh = pr_Yhat_1_X_Xp_Y_Yh.repeat(pr_YhThetaXp_Xp_E_Yh.shape[1],1,1,1,1)
+    pr_Yhat_X_Y_Xp_E_Yh = pr_Yhat_E_X_Xp_Y_Yh.transpose(0,3).transpose(0,1)
+
+    core_mse = (pr_YhThetaXp_X_Y_Xp_E_Yh - pr_Yhat_X_Y_Xp_E_Yh).pow(2)
+    core_mse_X_Y = torch.sum(torch.sum(core_mse.sum(dim=-1), dim=-1),dim=-1)
+
+    ## Calculate RR
+    pr_YLX_X_Y = torch.sum(pr_YThetaX_X_Y_E, dim=-1)
+    rr = torch.sum(torch.mul(pr_YLX_X_Y, core_mse_X_Y), dim=-1)/pr_YhThetaXp_Xp_E_Yh.shape[0]
+
+    return rr
+
 def bemps_coremse_batch(probs_B_K_C, batch_size, X, T):
 
     ## Pr(y|theta,x)
@@ -1825,7 +1875,6 @@ def bemps_coremse_batch(probs_B_K_C, batch_size, X, T):
 
     ## Calculate pr(y_hat)
     pr_ThetaLXY_X_1_Y_E = pr_ThetaLXY_X_Y_E.unsqueeze(dim=1)
-    print(pr_ThetaLXY_X_1_Y_E.size(),pr_YhThetaXp_Xp_E_Yh.size())
     pr_Yhat_X_Xp_Y_Yh = torch.matmul(pr_ThetaLXY_X_1_Y_E, pr_YhThetaXp_Xp_E_Yh)
 
     ## Calculate core MSE by using unsqueeze into same dimension for pr(y_hat) and pr(y_hat|theta,x)

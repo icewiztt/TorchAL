@@ -14,7 +14,7 @@ cd /home/ubuntu/bao.dhg/22dat.dh/vishc/TorchAL
 
 # script params
 port=5035
-sampling_fn=bemps
+sampling_fn=dbal
 lSet_partition=1
 base_seed=1
 num_GPU=1

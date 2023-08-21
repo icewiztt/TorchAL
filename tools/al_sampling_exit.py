@@ -380,4 +380,5 @@ if len(ensemble_args):
     print("=== Performing Ensemble based Active Learning ===")
     ensemble_active_learning(cfg, ensemble_args)
 else:
+    print("=== Performing Active Learning ===")
     active_sampling(cfg)

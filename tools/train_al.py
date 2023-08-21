@@ -496,11 +496,14 @@ def train_model(
     logger.info("Start epoch: {}".format(start_epoch + 1))
     val_set_acc = 0.0
 
-    temp_best_val_acc = 0.0
-    temp_best_val_epoch = 0
+    temp_best_val_acc_1 = 0.0
+    temp_best_val_acc_2 = 0.0
+    temp_best_val_epoch_1 = 0
+    temp_best_val_epoch_2 = 0
 
     ##best checkpoint states
     best_model_state = None
+    second_best_model_state = None
     best_opt_state = None
 
     val_acc_epochs_x = []
@@ -536,12 +539,14 @@ def train_model(
             val_set_err = test_epoch(cfg, valSetLoader, model, val_meter, cur_epoch)
             val_set_acc = 100.0 - val_set_err
 
-            if temp_best_val_acc < val_set_acc:
-                temp_best_val_acc = val_set_acc
-                temp_best_val_epoch = cur_epoch + 1
+            if temp_best_val_acc_1 < val_set_acc:
+                temp_best_val_acc_1 = val_set_acc
+                temp_best_val_epoch_2 = temp_best_val_epoch_1
+                temp_best_val_epoch_1 = cur_epoch + 1
 
                 # Save best model and optimizer state for checkpointing
                 model.eval()
+                second_best_model_state = best_model_state
 
                 best_model_state = (
                     model.module.state_dict()
@@ -550,7 +555,21 @@ def train_model(
                 )
                 best_opt_state = optimizer.state_dict()
                 model.train()
+            
+            elif temp_best_val_acc_2 < val_set_acc:
+                temp_best_val_acc_2 = val_set_acc
+                temp_best_val_epoch_2 = cur_epoch + 1
 
+                # Save best model and optimizer state for checkpointing
+                model.eval()
+
+                second_best_model_state = (
+                    model.module.state_dict()
+                    if cfg.NUM_GPUS > 1
+                    else model.state_dict()
+                )
+                second_best_opt_state = optimizer.state_dict()
+                model.train()
             # log if master process
             if du.is_master_proc(cfg):
                 # as we start from 0 epoch
@@ -659,11 +678,11 @@ def train_model(
         # update shared variable -- iff process is master process
         # if distributed training
         if cfg.NUM_GPUS > 1:
-            best_val_acc.value = temp_best_val_acc
-            best_val_epoch.value = temp_best_val_epoch
+            best_val_acc.value = temp_best_val_acc_1
+            best_val_epoch.value = temp_best_val_epoch_1
         else:
-            best_val_acc = temp_best_val_acc
-            best_val_epoch = temp_best_val_epoch
+            best_val_acc = temp_best_val_acc_1
+            best_val_epoch = temp_best_val_epoch_1
 
         """
         SAVES the best model checkpoint
@@ -671,13 +690,22 @@ def train_model(
 
         checkpoint_file = cu.state_save_checkpoint(
             cfg=cfg,
-            info="vlBest_acc_" + str(temp_best_val_acc),
+            info="vlBest_acc_" + str(temp_best_val_acc_1),
             model_state=best_model_state,
             optimizer_state=best_opt_state,
-            epoch=temp_best_val_epoch,
+            epoch=temp_best_val_epoch_1,
+        )
+        
+        second_checkpoint_file = cu.state_save_checkpoint(
+            cfg=cfg,
+            info="vlsecondBest_acc_" + str(temp_best_val_acc_2),
+            model_state = second_best_model_state,
+            optimizer_state=second_best_opt_state,
+            epoch = temp_best_val_epoch_2
         )
 
         logger.info("Wrote checkpoint to: {}".format(checkpoint_file))
+        logger.info("Wrote checkpoint to: {}".format(second_checkpoint_file))
 
     if not cfg.NUM_GPUS > 1:
         return best_val_acc, best_val_epoch
