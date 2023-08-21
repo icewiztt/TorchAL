@@ -73,13 +73,6 @@ def swa_train(cfg, args, optimizer, model, lSetLoader, bn_lSetLoader, valSetLoad
     print(
         f"SWA config- start={cfg.SWA_MODE.START_ITER}, freq={cfg.SWA_MODE.FREQ}, swa_lr={cfg.SWA_MODE.LR}"
     )
-    swa_optimizer = torchcontrib.optim.SWA(
-        optimizer,
-        swa_start=cfg.SWA_MODE.START_ITER,
-        swa_freq=cfg.SWA_MODE.FREQ,
-        swa_lr=cfg.SWA_MODE.LR,
-    )
-    print(f"SWA Optimizer: {swa_optimizer}")
 
     print("Training SWA for {} epochs.".format(args.swa_epochs))
     temp_max_itrs = len(lSetLoader)
@@ -87,6 +80,9 @@ def swa_train(cfg, args, optimizer, model, lSetLoader, bn_lSetLoader, valSetLoad
     temp_cur_itr = 0
 
     model.train()
+    
+    swa_model = torch.optim.swa_utils.AveragedModel(model)
+    swa_optimizer = torch.optim.swa_utils.SWALR(optimizer, swa_lr=cfg.SWA_MODE.LR)
 
     loss = torch.nn.CrossEntropyLoss()
 
@@ -96,25 +92,21 @@ def swa_train(cfg, args, optimizer, model, lSetLoader, bn_lSetLoader, valSetLoad
             x = x.cuda(current_id)
             y = y.cuda(current_id)
 
-            output = model(x)
-
-            error = loss(output, y)
-
-            swa_optimizer.zero_grad()
-            error.backward()
-            swa_optimizer.step()
-
+            optimizer.zero_grad()
+            loss(model(x), y).backward()
+            optimizer.step()
+            
             temp_cur_itr += 1
 
+            if temp_cur_itr > cfg.SWA_MODE.START_ITER and temp_cur_itr % cfg.SWA_MODE.FREQ == 0:
+                swa_model.update_parameters(model)
+                swa_optimizer.step()
+    
         # print("Epoch {} Done!! Train Loss: {}".format(epoch, error.item()))
-
-    print("Averaging weights -- SWA")
-    swa_optimizer.swap_swa_sgd()
-    print("Done!!")
 
     print("Updating BN")
 
-    swa_optimizer.bn_update(loader=lSetLoader, model=model)
+    torch.optim.swa_utils.update_bn(lSetLoader, swa_model) 
     print("Done!!")
 
     # Check val accuracy

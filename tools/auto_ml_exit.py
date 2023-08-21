@@ -41,7 +41,6 @@ def al_main(cfg, args, trainDataset, valDataset, dataObj, trial, isPruning):
     os.makedirs(cfg.OUT_DIR, exist_ok=True)
     # Save the config
     custom_dump_cfg(cfg)
-
     if cfg.NUM_GPUS > 1:
         print("============================")
         print("Number of Gpus available for multiprocessing: {}".format(cfg.NUM_GPUS))
@@ -190,7 +189,7 @@ def objective(trial, cfg, args, out_dir_path, isPruning):
     cfg.RNG_SEED = args.seed_id
 
     # load datasets
-    if args.dataset in ["CIFAR10", "CIFAR100", "SVHN", "MNIST", "STL10"]:
+    if args.dataset in ["CIFAR10", "CIFAR100", "SVHN", "MNIST", "STL10", "RSNA"]:
         dataObj = custom_Data(
             dataset=cfg.TRAIN.DATASET, israndAug=cfg.RANDAUG.ACTIVATE, args=args
         )
@@ -297,7 +296,7 @@ def run_auto_ml(cfg, args):
     # hparams_importances = optuna.importance.get_param_importances(study)
 
     complete_trials = [
-        t for t in study.trials if t.state == optuna.structs.TrialState.COMPLETE
+        t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
     ]
     print("Study statistics: ")
     print("  Number of finished trials: ", len(study.trials))

@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 import numpy as np
 from torch.utils.data.sampler import SubsetRandomSampler  # , SequentialSampler
-from .autoaugment import RandAugmentPolicy, SplitAugmentPolicy
+from al_utils.autoaugment import RandAugmentPolicy, SplitAugmentPolicy
 from pycls.datasets.sampler import IndexedSequentialSampler, IndexedDistributedSampler
 
 
@@ -68,6 +68,7 @@ class Data:
             "SVHN",
             "MNIST",
             "STL10",
+            "RSNA",
         ]:
             ops = []
             if self.is_augmented:
@@ -100,6 +101,13 @@ class Data:
                     ]
                     # import PIL
                     # ops = [transforms.Resize(256, interpolation=PIL.Image.BICUBIC), transforms.CenterCrop(224)]
+                elif self.dataset == "RSNA":
+                    ops = [
+                        transforms.Resize(256, antialias=True),
+                        transforms.RandomResizedCrop((224,224), antialias=True),
+                        transforms.Grayscale(num_output_channels=3),
+                    ]
+                    
                 else:
                     raise NotImplementedError
 
@@ -142,6 +150,10 @@ class Data:
                     ops.append(
                         RandAugmentPolicy(N=self.rand_augment_N, M=self.rand_augment_M)
                     )
+                elif self.dataset == "RSNA":
+                    ops.append(
+                        RandAugmentPolicy(N=self.rand_augment_N, M=self.rand_augment_M)
+                    )
 
             ops.append(transforms.ToTensor())
 
@@ -151,6 +163,12 @@ class Data:
                         transforms.Resize(256),
                         transforms.CenterCrop(224),
                         transforms.ToTensor(),
+                    ]
+                elif self.dataset == "RSNA":
+                    ops = [
+                        transforms.Resize((224,224), antialias=True),
+                        transforms.Grayscale(num_output_channels=3),
+                        transforms.ToTensor(),             
                     ]
                 else:
                     ops = [transforms.ToTensor()]
@@ -274,6 +292,24 @@ class Data:
             )
             # imagenet = ImageNet(save_dir,train=isTrain,transform=preprocess_steps,download=isDownload)
             return imagenet, len(imagenet)
+        
+        elif self.dataset == "RSNA":
+            # if preprocess steps undefined
+            if len(preprocess_steps) == 0:
+                preprocess_steps = self.getPreprocessOps()
+            
+            # if isDownload:
+            #     print("Warning: Download RSNA Dataset is not supported. Please run `download_data.sh`. Ignore this if you already download")
+                # raise NotImplementedError
+
+            from pycls.datasets.rsna import RSNA
+
+            rsna = RSNA(
+                data_path=save_dir, 
+                csv_path="data/RSNA/stage_2_train_labels.csv",
+                transforms=transforms.Compose(preprocess_steps)
+            )
+            return rsna, len(rsna)
 
         else:
             print(
@@ -346,6 +382,7 @@ class Data:
             "IMAGENET",
             "SVHN",
             "STL10",
+            "RSNA",
         ], "Sorry the dataset {} is not supported. Currently we support ['MNIST','CIFAR10']".format(
             self.dataset
         )
@@ -586,7 +623,7 @@ class Data:
         torch.manual_seed(seed_id)
         np.random.seed(seed_id)
 
-        if self.dataset in ["MNIST", "CIFAR10", "CIFAR100", "SVHN", "STL10"]:
+        if self.dataset in ["MNIST", "CIFAR10", "CIFAR100", "SVHN", "STL10", "RSNA"]:
             n_datapts = len(data)
             idx = [i for i in range(n_datapts)]
             splitIdx = int(split_ratio * n_datapts)

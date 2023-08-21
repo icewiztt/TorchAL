@@ -18,15 +18,15 @@ sampling_fn=bemps
 lSet_partition=1
 base_seed=1
 num_GPU=1
-al_iterations=4 #7 #4
-num_aml_trials=3 #50
-budget_size=5000 #2500
+al_iterations=2 #7 #4
+num_aml_trials=1 #50
+budget_size=100 #2500
 
-dataset=CIFAR10
+dataset=RSNA
 init_partition=10
 step_partition=10
 clf_epochs=5 #150
-num_classes=2
+num_classes=10
 swa_lr=5e-4
 swa_freq=50
 swa_epochs=5 #50
@@ -61,7 +61,7 @@ model_depth=16 #26
 
 date # So we know when we started
 
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 
 python3 tools/main_aml.py --n_GPU $num_GPU \
 --port $port --sampling_fn $sampling_fn --lSet_partition $lSet_partition \
@@ -77,7 +77,7 @@ python3 tools/main_aml.py --n_GPU $num_GPU \
 --lSetPath $lSetPath --uSetPath $uSetPath --valSetPath $valSetPath \
 --train_dir $train_dir --test_dir $test_dir \
 --dropout_iterations 25 \
---cfg configs/$dataset/$model_style/$model_type/R-18_4gpu_unreg.yaml \
+--cfg configs/$dataset/$model_style/$model_type/R-18_1gpu_unreg.yaml \
 --vaal_z_dim 32 --vaal_vae_bs 64 --vaal_epochs 15 \
 --vaal_vae_lr 5e-4 --vaal_disc_lr 5e-4 --vaal_beta 1.0 --vaal_adv_param 1.0 \
 --rand_aug --swa_mode --swa_freq $swa_freq --swa_lr $swa_lr --swa_epochs $swa_epochs --swa_iter 0 \
