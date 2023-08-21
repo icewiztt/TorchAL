@@ -202,7 +202,7 @@ def train_epoch(
         optimizer.step()
 
         # Compute the errors
-        top1_err, top5_err = mu.topk_errors(preds, labels, [1, 5])
+        [top1_err] = mu.topk_errors(preds, labels, [1])
 
         # Combine the stats across the GPUs
         if cfg.NUM_GPUS > 1:
@@ -216,7 +216,7 @@ def train_epoch(
 
         # #ONLY MASTER PROCESS SHOULD WRITE TO TENSORBOARD
         if du.is_master_proc(cfg):
-            if cur_iter is not 0 and cur_iter % 5 == 0:
+            if cur_iter != 0 and cur_iter % 5 == 0:
                 # because cur_epoch starts with 0
                 plot_it_xvalues.append((cur_epoch) * len_train_loader + cur_iter)
                 plot_it_y_values.append(loss)
@@ -271,7 +271,7 @@ def test_epoch(cfg, test_loader, model, test_meter, cur_epoch):
         preds = model(inputs)
 
         # Compute the errors
-        top1_err, top5_err = mu.topk_errors(preds, labels, [1, 5])
+        [top1_err] = mu.topk_errors(preds, labels, [1])
 
         # Combine the errors across the GPUs
         if cfg.NUM_GPUS > 1:

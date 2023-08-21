@@ -5,7 +5,6 @@ import os
 import sys
 import argparse
 
-import torchcontrib
 import pickle
 
 from glob import glob
