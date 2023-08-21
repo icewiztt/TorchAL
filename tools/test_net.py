@@ -72,12 +72,12 @@ def test_epoch(test_loader, model, test_meter, cur_epoch, cfg):
         # Compute the predictions
         preds = model(inputs)
         # Compute the errors
-        top1_err, top5_err = mu.topk_errors(preds, labels, [1, 5])
+        [top1_err] = mu.topk_errors(preds, labels, [1])
         # Combine the errors across the GPUs
         if cfg.NUM_GPUS > 1:
-            top1_err, top5_err = du.scaled_all_reduce(cfg, [top1_err, top5_err])
+            [top1_err] = du.scaled_all_reduce(cfg, [top1_err])
         # Copy the errors from GPU to CPU (sync point)
-        top1_err, top5_err = top1_err.item(), top5_err.item()
+        top1_err = top1_err.item()
 
         # Multiply by Number of GPU's as top1_err is scaled by 1/Num_GPUs
         misclassifications += top1_err * inputs.size(0) * cfg.NUM_GPUS

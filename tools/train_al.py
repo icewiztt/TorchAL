@@ -202,7 +202,7 @@ def train_epoch(
         optimizer.step()
 
         # Compute the errors
-        top1_err, top5_err = mu.topk_errors(preds, labels, [1, 5])
+        [top1_err] = mu.topk_errors(preds, labels, [1])
 
         # Combine the stats across the GPUs
         if cfg.NUM_GPUS > 1:
@@ -271,7 +271,7 @@ def test_epoch(cfg, test_loader, model, test_meter, cur_epoch):
         preds = model(inputs)
 
         # Compute the errors
-        top1_err, top5_err = mu.topk_errors(preds, labels, [1, 5])
+        [top1_err] = mu.topk_errors(preds, labels, [1])
 
         # Combine the errors across the GPUs
         if cfg.NUM_GPUS > 1:

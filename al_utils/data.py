@@ -103,8 +103,8 @@ class Data:
                     # ops = [transforms.Resize(256, interpolation=PIL.Image.BICUBIC), transforms.CenterCrop(224)]
                 elif self.dataset == "RSNA":
                     ops = [
-                        transforms.Resize(256, antialias=True),
-                        transforms.RandomResizedCrop((224,224), antialias=True),
+                        transforms.Resize(40, antialias=True),
+                        transforms.RandomResizedCrop((32,32), antialias=True),
                         transforms.Grayscale(num_output_channels=3),
                     ]
                     
@@ -166,7 +166,7 @@ class Data:
                     ]
                 elif self.dataset == "RSNA":
                     ops = [
-                        transforms.Resize((224,224), antialias=True),
+                        transforms.Resize((32,32), antialias=True),
                         transforms.Grayscale(num_output_channels=3),
                         transforms.ToTensor(),             
                     ]
