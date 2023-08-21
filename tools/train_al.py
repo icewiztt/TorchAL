@@ -216,7 +216,7 @@ def train_epoch(
 
         # #ONLY MASTER PROCESS SHOULD WRITE TO TENSORBOARD
         if du.is_master_proc(cfg):
-            if cur_iter is not 0 and cur_iter % 5 == 0:
+            if cur_iter != 0 and cur_iter % 5 == 0:
                 # because cur_epoch starts with 0
                 plot_it_xvalues.append((cur_epoch) * len_train_loader + cur_iter)
                 plot_it_y_values.append(loss)

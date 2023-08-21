@@ -19,14 +19,14 @@ lSet_partition=1
 base_seed=1
 num_GPU=1
 al_iterations=2 #7 #4
-num_aml_trials=1 #50
-budget_size=100 #2500
+num_aml_trials=2 #50
+budget_size=2000 #2500
 
 dataset=RSNA
 init_partition=10
 step_partition=10
 clf_epochs=5 #150
-num_classes=10
+num_classes=2
 swa_lr=5e-4
 swa_freq=50
 swa_epochs=5 #50
