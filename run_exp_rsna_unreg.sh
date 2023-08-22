@@ -14,13 +14,16 @@ cd ~/TorchAL
 lSet_partition=$1
 num_GPU=$2
 gpu_device=$3
+al_iterations=$4
+budget_size=$5
 
 # script params
 port=5035
 base_seed=1
-al_iterations=4 #7 #4
+# al_iterations=4 #7 #4
 num_aml_trials=5 #50
-budget_size=2668 #2500
+# budget_size=2668 #500
+
 
 dataset=RSNA
 init_partition=10
