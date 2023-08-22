@@ -1,4 +1,4 @@
-sudo apt-get install aria2
+sudo apt-get -y install aria2
 
 data_dir=~/TorchAL/data
 
