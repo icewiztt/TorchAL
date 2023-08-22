@@ -16,6 +16,7 @@ num_GPU=$2
 gpu_device=$3
 al_iterations=$4
 budget_size=$5
+config_dir=$6
 
 # script params
 port=5035
@@ -83,7 +84,7 @@ CUDA_VISIBLE_DEVICES=$gpu_device python3 tools/main_aml.py --n_GPU $num_GPU \
 --lSetPath $lSetPath --uSetPath $uSetPath --valSetPath $valSetPath \
 --train_dir $train_dir --test_dir $test_dir \
 --dropout_iterations 25 \
---cfg configs/$dataset/$model_style/$model_type/R-18_"$num_GPU"gpu.yaml \
+--cfg configs/$dataset/$model_style/$config_dir/R-18_"$num_GPU"gpu.yaml \
 --rand_aug --swa_mode --swa_freq $swa_freq --swa_lr $swa_lr --swa_epochs $swa_epochs --swa_iter 0 \
 # --vaal_z_dim 32 --vaal_vae_bs 64 --vaal_epochs 15 \
 # --vaal_vae_lr 5e-4 --vaal_disc_lr 5e-4 --vaal_beta 1.0 --vaal_adv_param 1.0 \
@@ -106,7 +107,7 @@ CUDA_VISIBLE_DEVICES=$gpu_device python3 tools/main_aml.py --n_GPU $num_GPU \
 --lSetPath $lSetPath --uSetPath $uSetPath --valSetPath $valSetPath \
 --train_dir $train_dir --test_dir $test_dir \
 --dropout_iterations 25 \
---cfg configs/$dataset/$model_style/$model_type/R-18_"$num_GPU"gpu.yaml \
+--cfg configs/$dataset/$model_style/$config_dir/R-18_"$num_GPU"gpu.yaml \
 --rand_aug --swa_mode --swa_freq $swa_freq --swa_lr $swa_lr --swa_epochs $swa_epochs --swa_iter 0 \
 # --vaal_z_dim 32 --vaal_vae_bs 64 --vaal_epochs 15 \
 # --vaal_vae_lr 5e-4 --vaal_disc_lr 5e-4 --vaal_beta 1.0 --vaal_adv_param 1.0 \
@@ -129,7 +130,7 @@ CUDA_VISIBLE_DEVICES=$gpu_device python3 tools/main_aml.py --n_GPU $num_GPU \
 --lSetPath $lSetPath --uSetPath $uSetPath --valSetPath $valSetPath \
 --train_dir $train_dir --test_dir $test_dir \
 --dropout_iterations 25 \
---cfg configs/$dataset/$model_style/$model_type/R-18_"$num_GPU"gpu.yaml \
+--cfg configs/$dataset/$model_style/$config_dir/R-18_"$num_GPU"gpu.yaml \
 --rand_aug --swa_mode --swa_freq $swa_freq --swa_lr $swa_lr --swa_epochs $swa_epochs --swa_iter 0 \
 # --vaal_z_dim 32 --vaal_vae_bs 64 --vaal_epochs 15 \
 # --vaal_vae_lr 5e-4 --vaal_disc_lr 5e-4 --vaal_beta 1.0 --vaal_adv_param 1.0 \
@@ -152,7 +153,7 @@ CUDA_VISIBLE_DEVICES=$gpu_device python3 tools/main_aml.py --n_GPU $num_GPU \
 --lSetPath $lSetPath --uSetPath $uSetPath --valSetPath $valSetPath \
 --train_dir $train_dir --test_dir $test_dir \
 --dropout_iterations 25 \
---cfg configs/$dataset/$model_style/$model_type/R-18_"$num_GPU"gpu.yaml \
+--cfg configs/$dataset/$model_style/$config_dir/R-18_"$num_GPU"gpu.yaml \
 --rand_aug --swa_mode --swa_freq $swa_freq --swa_lr $swa_lr --swa_epochs $swa_epochs --swa_iter 0 \
 # --vaal_z_dim 32 --vaal_vae_bs 64 --vaal_epochs 15 \
 # --vaal_vae_lr 5e-4 --vaal_disc_lr 5e-4 --vaal_beta 1.0 --vaal_adv_param 1.0 \
